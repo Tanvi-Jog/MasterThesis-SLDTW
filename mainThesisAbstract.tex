@@ -1,0 +1,51 @@
+\documentclass{article}
+
+% Language setting
+% Replace `english' with e.g. `spanish' to change the document language
+\usepackage[english]{babel}
+
+% Set page size and margins
+% Replace `letterpaper' with`a4paper' for UK/EU standard size
+\usepackage[a4paper,top=1cm,bottom=1cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
+
+% Useful packages
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+
+\title{\textbf{Surrogate Loss Learning for DTW}}
+\date{\vspace{-5ex}}
+%\date{}  % Toggle commenting to test
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\Large
+In Time Series analysis Dynamic Time Warping (DTW) is a technique used to quantify similarity between two time sequences which might be varying in length and speed. Research has manifested that DTW, which is a metric can also be used as a loss function for training deep learning networks. 
+The basic implementation of DTW makes use of 'min' operation which is non-differentiable. 
+In order to use DTW as loss function, authors proposed \hyperlink{1}{\textbf{soft-DTW}} which is differentiable as it makes use of soft-min instead of min operation. The pitfall of this approach is that its closely dependent on hyper-parameter $\gamma$ and focuses only on shape error between two sequences.
+As an extension to this, \hyperlink{2}{\textbf{Shape and Time Distortion Loss (DILATE)}} was proposed which along with shape error considers time delay as well. Quadratic complexity and efficiency depending on parameter $\gamma$ are a stumbling block to these functions. \\
+Considering these factors, surrogate loss functions turns out to be best alternative for non-differential or computationally complex loss functions. 
+As suggested by the authors in \hyperlink{3}{\textbf{Learning Surrogate Losses}}, we would try to develop a surrogate loss function for \hyperlink{2}{\textbf{Shape and Time Distortion Loss (DILATE)}} as meta-level neural network that will approximate the desired loss. This network will be trained initially with train data-set such that \hyperlink{2}{\textbf{Shape and Time Distortion Loss (DILATE)}} is differentiable during training and then the training of prediction model will be carried out. 
+In perspective of DTW we'd like to make use of attention networks for surrogate loss training. 
+\end{abstract}
+
+
+\begin{thebibliography}{3}
+\hypertarget{1}{
+\bibitem{1}
+Cuturi, Marco, and Mathieu BlondelCuturi, Marco, and Mathieu Blondel. Soft-DTW: a differentiable loss function for time-series, International Conference on Machine Learning. PMLR, 2017.}
+
+\hypertarget{2}{
+\bibitem{2}
+Guen, Vincent Le, and Nicolas Thome. Shape and Time distortion loss
+for training deep time series forecasting models, arXiv:1909.09020(2019).}
+
+\hypertarget{3}{
+\bibitem{3}
+ Grabocka, Josif, Randolf Scholz, and Lars Schmidt-Thieme. Learning
+surrogate losses, arXiv:1905.10108 (2019).}
+
+\end{thebibliography}
+\end{document}
