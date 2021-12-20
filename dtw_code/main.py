@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import warnings
 warnings.filterwarnings("ignore")
-'''
+
 from surrogate_model import SurrogateModel
 from prediciton_model import PredictionModel
 from new_optimizer import Optimizer
@@ -33,11 +33,10 @@ parser.add_argument('--train_size', type=float, default=0.5, help='portion of da
 parser.add_argument('--valid_size', type=float, default=0.2, help='portion of dataset for validation')
 parser.add_argument('--test_size', type=float, default=0.3, help='portion of dataset for testing')
 args = parser.parse_args()
-'''
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print('Available device is: ', device)
 
-'''
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print('Available device is: ', device, torch.cuda.device_count())
+
 #load, parse and store the data only if indicated o/w load the processed data.
 if str(args.data_process).lower() == 'true':
     data = DataParser(data_path=args.data, config=args)
@@ -55,4 +54,3 @@ model_loss = SurrogateModel(config=args).to(device)
 # create the optimizer
 optimizer = Optimizer(config=args, dataset=ds, model_pred=model_pred, model_loss=model_loss)
 optimizer.run()
-'''
