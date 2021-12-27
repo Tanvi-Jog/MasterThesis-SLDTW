@@ -1,12 +1,12 @@
 import torch
 from torch.cuda import device_count
-import torch.nn as nn
 import numpy as np
 
-from torch.utils.data import DataLoader, Dataset, TensorDataset
+from torch.utils.data import DataLoader, TensorDataset
 from routine.recorder import Record
 from true_loss import TrueLoss
 from tslearn.metrics import dtw, dtw_path
+
 
 class Optimizer:
 
@@ -17,27 +17,27 @@ class Optimizer:
       self.model_loss = model_loss
       self.true_loss = TrueLoss(self.config)
 
-      #get number of gpus 
-      workers = 4 * torch.cuda.device_count()
+      # get number of gpus
+      workers = 4 * device_count()
       train_data = TensorDataset(self.ds.trainX, self.ds.trainY)
-      self.train_loader = DataLoader(train_data, shuffle=True, batch_size=self.config.batch_size, drop_last=True, pin_memory=True) 
-                                     #num_workers=workers
+      self.train_loader = DataLoader(train_data, shuffle=True, batch_size=self.config.batch_size, drop_last=True, pin_memory=True,)
+                                     #num_workers=workers)
       val_data = TensorDataset(self.ds.validX, self.ds.validY)
-      self.val_loader = DataLoader(val_data, shuffle=False, batch_size=self.config.batch_size, drop_last=True, pin_memory=True)
-                                   #num_workers=workers
+      self.val_loader = DataLoader(val_data, shuffle=False, batch_size=self.config.batch_size, drop_last=True, pin_memory=True,)
+                                   #num_workers=workers)
       test_data = TensorDataset(self.ds.testX, self.ds.testY) 
-      self.test_loader = DataLoader(test_data, shuffle=False, batch_size=self.config.batch_size, drop_last=True, pin_memory=True)
-                                    #num_workers=workers
+      self.test_loader = DataLoader(test_data, shuffle=False, batch_size=self.config.batch_size, drop_last=True, pin_memory=True,)
+                                    #num_workers=workers)
 
     def run(self):
-        #pretrain the prediction network
+        # pretrain the prediction network
         if str(self.config.pretrain_pred).lower() == 'true':
           print('pretraining prediction network')
           self.train_prediction(self.config.epochs, 'mse', self.train_loader, self.val_loader)
         else:
           print('Loading the pretrained prediction network')
           self.model_pred.load_state_dict(torch.load(f"{self.config.save}/{self.config.dataset}_prediction_model.pth"))
-        #pretrain the surrogate network
+        # pretrain the surrogate network
         if str(self.config.pretrain_loss).lower() == 'true':
           print('pretraining surrogate network')
           self.train_surrogate(self.config.epochs, self.train_loader, self.val_loader)
@@ -47,13 +47,13 @@ class Optimizer:
         #training loop
         for epoch in range(self.config.epochs):
             print('For epoch:', epoch)
-            #train prediction network with surrogate loss for number of steps
+            # train prediction network with surrogate loss for number of steps
             print('Training prediction network for: ', self.config.steps_prediction, 'epochs')
             self.train_prediction(self.config.steps_prediction, 'dtw_surrogate', self.train_loader, self.val_loader)
-            #train surrogate network again for number of steps
+            # train surrogate network again for number of steps
             print('Training surrogate network for: ', self.config.steps_loss, 'epochs')
             self.train_surrogate(self.config.steps_loss, self.train_loader, self.val_loader)
-        #testing loop
+        # testing loop
         train_record, test_record = Record(is_train=True), Record(is_train=False)
         test_l_true = self.test(self.model_loss, self.model_pred, self.test_loader, self.config.batch_size, n_features=1, 
                                      train_model='prediction', loss_type='dtw')
@@ -64,12 +64,11 @@ class Optimizer:
         #perform plotting of values
         #test_record.plot_losses(loss['train loss'],)
 
-        
     def train_prediction(self, num_epochs, type_loss, train_dataset, test_dataset):
         '''
         Train the forecasting model with specified loss 
         '''
-        loss =  {'train loss':list(), 'valid loss':list(), 'test loss':list()} 
+        loss = {'train loss': list(), 'valid loss': list(), 'test loss': list()}
         title = f"{self.config.dataset}_prediction_model"
         best_valid_loss = float("inf")
         optimizer = torch.optim.Adam(self.model_pred.parameters(),lr=self.config.lr_pred, weight_decay=1e-6)
@@ -84,7 +83,7 @@ class Optimizer:
             print("Epoch: %d, Train loss: %1.5f, Valid loss: %1.5f" % (epoch, train_loss, valid_loss))
             if valid_loss < best_valid_loss:
                 best_valid_loss = valid_loss
-                #save and load only the model parameters
+                # save and load only the model parameters
                 torch.save(self.model_pred.state_dict(), f"{self.config.save}/{title}.pth")
                 es = 0
             else:
@@ -115,8 +114,8 @@ class Optimizer:
             print("Epoch: %d, Train loss: %1.5f, Valid loss: %1.5f" % (epoch, train_loss, valid_loss))
             if valid_loss < best_valid_loss:
                 best_valid_loss = valid_loss
-                #save and load only the model parameters
-                torch.save(self.model_pred.state_dict(), f"{self.config.save}/{title}.pth")
+                # save and load only the model parameters
+                torch.save(self.model_loss.state_dict(), f"{self.config.save}/{title}.pth")
                 es = 0
             else:
                 es += 1
@@ -134,10 +133,11 @@ class Optimizer:
         total_loss = 0.
         if train_model == 'prediction':
             model_pred.train()
-            for param in model_loss.parameters():
-                param.requires_grad = False
+            # for param in model_loss.parameters():
+            #     param.requires_grad = False
         if train_model == 'surrogate':
             model_loss.train()
+            # freezing the part of the model as no changes happen to its parameters
             for param in model_pred.parameters():
                 param.requires_grad = False
 
@@ -148,13 +148,14 @@ class Optimizer:
             if torch.cuda.is_available():
                 x = torch.tensor(x, dtype=torch.float32).cuda()
                 y = torch.tensor(y, dtype=torch.float32).cuda()
+            opt.zero_grad()
             outputs = model_pred(x)
-            #euclidean loss
+            # euclidean loss
             if loss_type == 'mse':
                 criterion = torch.nn.MSELoss()
                 loss = criterion(outputs, y)
                 total_loss += loss.item()
-            #surrogate loss
+            # surrogate loss
             if loss_type == 'dtw_surrogate':
                 loss_dtw_true = 0
                 y, y_hat = self.format_variables(y, outputs, n_features, batch_size)
@@ -167,17 +168,14 @@ class Optimizer:
                     loss_dtw_true += sim
                 loss_dtw_true = loss_dtw_true/batch_size
                 loss_dtw_hat = loss_dtw_hat/batch_size
-                if i == len(data_loader)-1:
-                    print('l:', loss_dtw_true, 'l_hat', loss_dtw_hat)
                 loss = torch.abs(loss_dtw_true - loss_dtw_hat)
                 total_loss += loss
-            #true dtw loss 
+            # true dtw loss
             if loss_type == 'dtw':
                 y, y_hat = self.format_variables(y, outputs, n_features, batch_size)
                 loss_true = self.true_loss.compute(y, y_hat)
                 loss_dtw = loss_true /batch_size
                 total_loss += loss_dtw
-            opt.zero_grad()
             loss.backward()
             opt.step()
         total_loss /= len(data_loader.dataset)
@@ -188,10 +186,8 @@ class Optimizer:
         Function to carry out testing for each epoch
         '''
         total_loss = 0.
-        if train_model == 'prediction':
-            model_pred.eval()
-        if train_model == 'surrogate':
-            model_loss.eval()
+        model_pred.eval()
+        model_loss.eval()
         
         with torch.no_grad():
             for i, data in enumerate(data_loader, 0):
@@ -202,12 +198,12 @@ class Optimizer:
                     x = torch.tensor(x, dtype=torch.float32).cuda()
                     y = torch.tensor(y, dtype=torch.float32).cuda()
                 outputs = model_pred(x)
-                #euclidean loss
+                # euclidean loss
                 if loss_type == 'mse':
                     criterion = torch.nn.MSELoss()
                     loss = criterion(outputs, y)
                     total_loss += loss.item()
-                #surrogate loss
+                # surrogate loss
                 if loss_type == 'dtw_surrogate':
                     loss_dtw_true = 0
                     y, y_hat = self.format_variables(y, outputs, n_features, batch_size)
@@ -222,7 +218,7 @@ class Optimizer:
                     loss_dtw_hat = loss_dtw_hat/batch_size
                     loss = torch.abs(loss_dtw_true - loss_dtw_hat)
                     total_loss += loss
-                #true dtw loss 
+                # true dtw loss
                 if loss_type == 'dtw':
                     y, y_hat = self.format_variables(y, outputs, n_features, batch_size)
                     loss_true = self.true_loss.compute(y, y_hat)

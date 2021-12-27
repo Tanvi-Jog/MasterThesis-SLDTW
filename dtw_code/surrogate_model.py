@@ -1,14 +1,13 @@
 import torch
 import torch.nn as nn
-from torch.nn.modules.activation import ReLU
-from torch.nn.modules.pooling import MaxPool1d
+
 
 class SurrogateModel(nn.Module):
   """
   This model extracts the features needed for similarity from inputs. The architecture replicates the best performing
   architecture. HP for the Siamese are fixed and must be avoided for replicating the original results.
   """
-  def __init__(self, config): #future_steps, batch_size, 1
+  def __init__(self, config):  # future_steps, batch_size, 1
     super(SurrogateModel, self).__init__()
     self.config = config
     self.input_dim = self.config.horizon
@@ -66,6 +65,6 @@ class SurrogateModel(nn.Module):
     x2 = nn.Sigmoid()(x2)
     x = torch.abs(x1 - x2)
     x = self.fcOut(x)
-    x = (torch.sum(x)) #or nn.Sigmoid() torch.sum(x)
+    x = (torch.sum(x))  # or nn.Sigmoid() torch.sum(x)
     return x
 
